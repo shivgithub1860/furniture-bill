@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Furniture Measurement Bill Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      background-color: #f9f9f9;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .form-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    input, select {
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      width: 160px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+    }
+
+    button {
+      border-radius: 10px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #0099ff;
+      color: white;
+    }
+
+    .success-message {
+      background-color: #d4edda;
+      padding: 15px;
+      margin-top: 10px;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      border-radius: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Furniture Measurement Bill Generator</h2>
+
+  <div class="form-container">
+    <input id="companyName" type="text" placeholder="Company Name">
+    <input id="contactNumber" type="text" placeholder="Contact Number" maxlength="10">
+    <input id="clientName" type="text" placeholder="Client Name">
+    <input id="clientAddress" type="text" placeholder="Client Address">
+    <select id="roomType">
+      <option value="Bedroom">Bedroom</option>
+      <option value="Kitchen">Kitchen</option>
+      <option value="Living Room">Living Room</option>
+      <option value="Bathroom">Bathroom</option>
+      <option value="Other">Other</option>
+    </select>
+  </div>
+
+  <div class="form-container">
+    <input id="srNo" type="text" placeholder="Sr.No">
+    <input id="particularNo" type="text" placeholder="Particular No">
+    <input id="length" type="number" placeholder="Length">
+    <input id="breadth" type="number" placeholder="Breadth">
+    <input id="height" type="number" placeholder="Height">
+    <select id="unit">
+      <option value="SQFT">SQFT</option>
+      <option value="RFT">RFT</option>
+      <option value="NOS">NOS</option>
+    </select>
+    <input id="rate" type="number" placeholder="Rate">
+    <input id="remark" type="text" placeholder="Remark">
+  </div>
+
+  <div style="text-align:center;">
+    <button onclick="addMeasurement()">Add Measurement</button>
+    <button onclick="saveExcel()">Save as Excel</button>
+    <button onclick="clearAll()">Clear All</button>
+  </div>
+
+  <div class="success-message" id="successMessage" style="display:none;">Excel file downloaded successfully.</div>
+
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>Room</th>
+        <th>Sr.No</th>
+        <th>Particular No</th>
+        <th>Length</th>
+        <th>Breadth</th>
+        <th>Height</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Rate</th>
+        <th>Amount</th>
+        <th>Remark</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let allMeasurements = [];
+    let savedCompanyInfo = {};
+
+    function addMeasurement() {
+      const srNo = document.getElementById("srNo").value;
+      const particularNo = document.getElementById("particularNo").value;
+      const length = parseFloat(document.getElementById("length").value);
+      const breadth = parseFloat(document.getElementById("breadth").value);
+      const height = parseFloat(document.getElementById("height").value);
+      const unit = document.getElementById("unit").value;
+      const rate = parseFloat(document.getElementById("rate").value) || 0;
+      const remark = document.getElementById("remark").value;
+      const roomType = document.getElementById("roomType").value;
+
+      if (!srNo || !particularNo || isNaN(length) && isNaN(breadth) && isNaN(height)) {
+        alert("Please fill at least two measurements and required fields.");
+        return;
+      }
+
+      let values = [length, breadth, height].filter(val => !isNaN(val));
+      let quantity = values.reduce((a, b) => a * b, 1);
+      let amount = rate * quantity;
+
+      const entry = {
+        Room: roomType,
+        "Sr.No": srNo,
+        "Particular No": particularNo,
+        Length: isNaN(length) ? "" : length,
+        Breadth: isNaN(breadth) ? "" : breadth,
+        Height: isNaN(height) ? "" : height,
+        Quantity: quantity,
+        Unit: unit,
+        Rate: rate,
+        Amount: amount,
+        Remark: remark
+      };
+
+      allMeasurements.push(entry);
+      updateTable();
+      clearInputs();
+    }
+
+    function updateTable() {
+      const tableBody = document.getElementById("dataTable").getElementsByTagName("tbody")[0];
+      tableBody.innerHTML = "";
+      allMeasurements.forEach((entry, index) => {
+        const row = tableBody.insertRow();
+        row.innerHTML = `
+          <td>${entry.Room}</td>
+          <td>${entry["Sr.No"]}</td>
+          <td>${entry["Particular No"]}</td>
+          <td>${entry.Length}</td>
+          <td>${entry.Breadth}</td>
+          <td>${entry.Height}</td>
+          <td>${entry.Quantity}</td>
+          <td>${entry.Unit}</td>
+          <td>${entry.Rate}</td>
+          <td>${entry.Amount.toFixed(2)}</td>
+          <td>${entry.Remark}</td>
+          <td><button onclick="deleteRow(${index})">Delete</button></td>
+        `;
+      });
+    }
+
+    function deleteRow(index) {
+      allMeasurements.splice(index, 1);
+      updateTable();
+    }
+
+    function saveExcel() {
+      const companyName = document.getElementById("companyName").value.trim() || savedCompanyInfo.companyName || "";
+      const contactNumber = document.getElementById("contactNumber").value.trim() || savedCompanyInfo.contactNumber || "";
+      const clientName = document.getElementById("clientName").value.trim() || savedCompanyInfo.clientName || "";
+      const clientAddress = document.getElementById("clientAddress").value.trim() || savedCompanyInfo.clientAddress || "";
+
+      savedCompanyInfo = { companyName, contactNumber, clientName, clientAddress };
+
+      if (allMeasurements.length === 0) {
+        alert("Add measurements before saving.");
+        return;
+      }
+
+      const workbook = XLSX.utils.book_new();
+      const grouped = allMeasurements.reduce((acc, item) => {
+        if (!acc[item.Room]) acc[item.Room] = [];
+        acc[item.Room].push(item);
+        return acc;
+      }, {});
+
+      for (let room in grouped) {
+        let data = grouped[room];
+        let total = data.reduce((sum, row) => sum + row.Amount, 0);
+        let sheetData = [
+          ["Company Name:", companyName],
+          ["Contact Number:", contactNumber],
+          ["Client Name:", clientName],
+          ["Client Address:", clientAddress],
+          [],
+          Object.keys(data[0]),
+          ...data.map(obj => Object.values(obj)),
+          [],
+          ["", "", "", "", "", "", "", "", "Grand Total", total.toFixed(2)]
+        ];
+        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, room);
+      }
+
+      XLSX.writeFile(workbook, `${companyName || "Furniture"}_Bill.xlsx`);
+
+      document.getElementById("successMessage").style.display = "block";
+      setTimeout(() => {
+        document.getElementById("successMessage").style.display = "none";
+      }, 3000);
+    }
+
+    function clearInputs() {
+      document.querySelectorAll(".form-container input").forEach(input => input.value = "");
+      document.getElementById("unit").value = "SQFT";
+      document.getElementById("roomType").value = "Bedroom";
+    }
+
+    function clearAll() {
+      allMeasurements = [];
+      updateTable();
+    }
+  </script>
+</body>
+</html>
